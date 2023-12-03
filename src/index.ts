@@ -249,7 +249,7 @@ export default class HttpProtect {
         res: Response,
         next: NextFunction,
     ) => Promise<void> {
-        return (req, res, next) => {
+        return async (req, res, next) => {
             const { status, httpCode } = await this.verify(req);
 
             if (status === VerificationStatus.SAFE) {
@@ -266,7 +266,7 @@ export default class HttpProtect {
         res: Response,
         next: NextFunction,
     ) => Promise<void> {
-        return (req, res, next) => {
+        return async (req, res, next) => {
             const { status, httpCode } = await this.verify(req);
 
             if (status === VerificationStatus.SAFE) {
@@ -291,7 +291,7 @@ export default class HttpProtect {
         res: Response,
         next: NextFunction,
     ) => Promise<void> {
-        return (req, res, next) => {
+        return async (req, res, next) => {
             const { status, httpCode } = await this.verify(req);
 
             if (status === VerificationStatus.SAFE) {
