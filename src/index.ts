@@ -105,6 +105,15 @@ export interface HttpProtectOptions {
      * @see ttl
      */
     banLimit?: number;
+
+    /**
+     * List of CIDR networks which should be considered as safe and should not
+     * be limited or banned. By default, it is empty. You may specify your own
+     * list of CIDR records which should be considered as safe and should not
+     * be limited or banned. This may be useful for your own services which
+     * should not be limited or banned by this module.
+     */
+    safeNetworks?: string[];
 }
 
 export interface Response {
@@ -153,6 +162,7 @@ export default class HttpProtect {
     public readonly maxRequests: number;
     public readonly banLimit: number;
     public readonly blockListKey: string;
+    public readonly safeNetworks: Networks;
 
     public constructor(private options?: HttpProtectOptions) {
         this.redis = options?.redis || this.connect(options?.redisOptions);
@@ -163,6 +173,7 @@ export default class HttpProtect {
         this.banLimit = this.options?.banLimit ||
             +(process.env.HTTP_PROTECT_BAN_LIMIT || 1000);
         this.blockListKey = `${ this.prefix }:block-list`;
+        this.safeNetworks = new Networks(this.options?.safeNetworks || []);
     }
 
     public connect(options?: RedisOptions): Redis {
@@ -175,11 +186,19 @@ export default class HttpProtect {
     }
 
     public async verify(req: Request): Promise<VerificationResponse> {
+        const ip = getClientIp(req) || '';
+
+        if (this.isSafeIp(ip)) {
+            return {
+                status: VerificationStatus.SAFE,
+                httpCode: 200,
+            };
+        }
+
         if (!this.redis) {
             throw new Error('Redis connection is not established!');
         }
 
-        const ip = getClientIp(req) || '';
         const key = `${ this.prefix }:${ ip }`;
 
         if (await this.redis?.sismember(this.blockListKey, ip)) {
@@ -320,5 +339,9 @@ export default class HttpProtect {
     destroy(): void {
         this.redis?.disconnect();
         this.redis = undefined;
+    }
+
+    private isSafeIp(ip: string): boolean {
+        return this.safeNetworks.includes(ip);
     }
 }
