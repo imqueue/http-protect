@@ -19,6 +19,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import './../mocks';
 import { beforeEach, afterEach, describe } from 'mocha';
 import { expect } from 'chai';
 import HttpProtect, { Request, VerificationStatus } from '../../src';
@@ -28,8 +29,6 @@ function ipRequest(ip: string): Request {
 }
 
 describe('HttpProtect', function () {
-    this.timeout(5000);
-
     it('should be a class', () => {
         expect(typeof HttpProtect).to.be.equal('function');
     });
