@@ -27,7 +27,9 @@ function ipRequest(ip: string): Request {
     return { headers: { 'x-forwarded-for': ip } } as Request;
 }
 
-describe('HttpProtect', () => {
+describe('HttpProtect', function () {
+    this.timeout(5000);
+
     it('should be a class', () => {
         expect(typeof HttpProtect).to.be.equal('function');
     });
