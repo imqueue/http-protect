@@ -19,25 +19,25 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import './../mocks';
-import { beforeEach, afterEach, describe } from 'mocha';
-import { expect } from 'chai';
-import HttpProtect, { Request, VerificationStatus } from '../../src';
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import './mocks/index.js';
+import HttpProtect, { type Request, VerificationStatus } from '../src/index.js';
 
 function ipRequest(ip: string): Request {
     return { headers: { 'x-forwarded-for': ip } } as Request;
 }
 
-describe('HttpProtect', function () {
+describe('HttpProtect', () => {
     it('should be a class', () => {
-        expect(typeof HttpProtect).to.be.equal('function');
+        assert.equal(typeof HttpProtect, 'function');
     });
 
     it('should be constructable', () => {
-        expect(() => {
+        assert.doesNotThrow(() => {
             const protector = new HttpProtect();
             protector.destroy();
-        }).not.to.throw();
+        });
     });
 
     describe('verify()', () => {
@@ -53,7 +53,7 @@ describe('HttpProtect', function () {
 
         it('should ban, limit & verify properly', async () => {
             for (let i = 2; i < 12; i++) {
-                const ip = `127.0.0.${ i }`;
+                const ip = `127.0.0.${i}`;
                 const req = ipRequest(ip);
 
                 for (let j = 0; j < 1001; j++) {
@@ -62,7 +62,7 @@ describe('HttpProtect', function () {
             }
 
             for (let i = 13; i < 23; i++) {
-                const ip = `127.0.0.${ i }`;
+                const ip = `127.0.0.${i}`;
                 const req = ipRequest(ip);
 
                 for (let j = 0; j < 998; j++) {
@@ -72,28 +72,24 @@ describe('HttpProtect', function () {
 
             const banned = await protector.bannedNetworks();
 
-            expect(banned.includes('127.0.0.1')).to.be.false;
-            expect(banned.includes('127.0.0.2')).to.be.true;
-            expect(banned.includes('127.0.0.13')).to.be.false;
+            assert.equal(banned.includes('127.0.0.1'), false);
+            assert.equal(banned.includes('127.0.0.2'), true);
+            assert.equal(banned.includes('127.0.0.13'), false);
 
-            await protector.isLimited('127.0.0.13')
-            .then((isLimited) => {
-                expect(isLimited).to.be.true;
+            await protector.isLimited('127.0.0.13').then(isLimited => {
+                assert.equal(isLimited, true);
             });
 
-            await protector.verify(ipRequest('127.0.0.10'))
-            .then((result) => {
-                expect(result.status).to.be.equal(VerificationStatus.BANNED);
+            await protector.verify(ipRequest('127.0.0.10')).then(result => {
+                assert.equal(result.status, VerificationStatus.BANNED);
             });
 
-            await protector.verify(ipRequest('127.0.0.15'))
-            .then((result) => {
-                expect(result.status).to.be.equal(VerificationStatus.LIMITED);
+            await protector.verify(ipRequest('127.0.0.15')).then(result => {
+                assert.equal(result.status, VerificationStatus.LIMITED);
             });
 
-            await protector.verify(ipRequest('127.0.0.1'))
-            .then((result) => {
-                expect(result.status).to.be.equal(VerificationStatus.SAFE);
+            await protector.verify(ipRequest('127.0.0.1')).then(result => {
+                assert.equal(result.status, VerificationStatus.SAFE);
             });
         });
     });
