@@ -21,4 +21,21 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-export * from './redis';
+import { mock } from 'node:test';
+import { RedisClientMock } from './redis.js';
+
+// preloaded via `node --import ./test/mocks/index.js` so the mock is
+// registered before any test file graph links (see package.json scripts)
+mock.module('ioredis', {
+    cache: false,
+    defaultExport: {
+        __esModule: true,
+        default: RedisClientMock,
+        Redis: RedisClientMock,
+    },
+    namedExports: {
+        Redis: RedisClientMock,
+    },
+});
+
+export * from './redis.js';

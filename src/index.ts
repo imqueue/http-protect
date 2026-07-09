@@ -19,8 +19,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import Redis, { RedisOptions } from 'ioredis';
-import { getClientIp, Request } from 'request-ip';
+import { Redis, type RedisOptions } from 'ioredis';
+import { getClientIp, type Request } from 'request-ip';
 import { Networks } from '@imqueue/net';
 
 /**
@@ -130,7 +130,7 @@ export interface Response {
     end(...args: any[]): any;
 }
 
-export { Request } from 'request-ip';
+export type { Request } from 'request-ip';
 
 export enum VerificationStatus {
     SAFE,
@@ -150,7 +150,7 @@ export interface NextFunction {
 const HTTP_TEXT: {
     [code: number]: string;
 } = {
-    418: 'I\'m a teapot',
+    418: "I'm a teapot",
     429: 'Too Many Requests',
 };
 
@@ -173,20 +173,24 @@ export default class HttpProtect {
     public constructor(private options?: HttpProtectOptions) {
         this.redis = options?.redis || this.connect(options?.redisOptions);
         this.prefix = this.options?.redisPrefix || 'imq:http-protect';
-        this.maxRequests = this.options?.maxRequests ||
+        this.maxRequests =
+            this.options?.maxRequests ||
             +(process.env.HTTP_PROTECT_MAX_REQUESTS || 200);
         this.ttl = this.options?.ttl || +(process.env.HTTP_PROTECT_TTL || 10);
-        this.banLimit = this.options?.banLimit ||
+        this.banLimit =
+            this.options?.banLimit ||
             +(process.env.HTTP_PROTECT_BAN_LIMIT || 1000);
-        this.blockListKey = `${ this.prefix }:block-list`;
+        this.blockListKey = `${this.prefix}:block-list`;
         this.safeNetworks = new Networks(this.options?.safeNetworks || []);
     }
 
     public connect(options?: RedisOptions): Redis {
-        this.redis = new Redis(options || {
-            host: 'localhost',
-            port: 6379,
-        });
+        this.redis = new Redis(
+            options || {
+                host: 'localhost',
+                port: 6379,
+            },
+        );
 
         return this.redis;
     }
@@ -205,7 +209,7 @@ export default class HttpProtect {
             throw new Error('Redis connection is not established!');
         }
 
-        const key = `${ this.prefix }:${ ip }`;
+        const key = `${this.prefix}:${ip}`;
 
         if (await this.redis?.sismember(this.blockListKey, ip)) {
             return {
@@ -216,8 +220,8 @@ export default class HttpProtect {
 
         let requests = 1;
 
-        if (!await this.redis?.setnx(key, 1)) {
-            requests = await this.redis?.incr(key) || 1;
+        if (!(await this.redis?.setnx(key, 1))) {
+            requests = (await this.redis?.incr(key)) || 1;
         }
 
         // noinspection TypeScriptValidateTypes
@@ -248,11 +252,10 @@ export default class HttpProtect {
 
     public async bannedNetworks(): Promise<Networks> {
         // noinspection TypeScriptValidateTypes
-        const ips: string[] = await this.redis?.smembers(
-            this.blockListKey,
-        ) || [];
+        const ips: string[] =
+            (await this.redis?.smembers(this.blockListKey)) || [];
 
-        return new Networks(ips.map(ip => `${ ip }/32`));
+        return new Networks(ips.map(ip => `${ip}/32`));
     }
 
     // noinspection JSUnusedGlobalSymbols
@@ -263,8 +266,8 @@ export default class HttpProtect {
     }
 
     public async isLimited(ip: string): Promise<boolean> {
-        const key = `${ this.prefix }:${ ip }`;
-        const requests = +(await this.redis?.get(key) || 0);
+        const key = `${this.prefix}:${ip}`;
+        const requests = +((await this.redis?.get(key)) || 0);
 
         return requests > this.maxRequests;
     }
@@ -306,7 +309,7 @@ export default class HttpProtect {
                 res.setHeader('Content-Type', 'text/plain');
             }
 
-            res.send(`${ httpCode } ${ HTTP_TEXT[httpCode] }`);
+            res.send(`${httpCode} ${HTTP_TEXT[httpCode]}`);
             res.end();
         };
     }
@@ -331,13 +334,15 @@ export default class HttpProtect {
                 res.setHeader('Content-Type', 'application/json');
             }
 
-            res.send(JSON.stringify({
-                error: {
-                    type: 'HTTP',
-                    code: httpCode,
-                    message: HTTP_TEXT[httpCode],
-                },
-            }));
+            res.send(
+                JSON.stringify({
+                    error: {
+                        type: 'HTTP',
+                        code: httpCode,
+                        message: HTTP_TEXT[httpCode],
+                    },
+                }),
+            );
             res.end();
         };
     }
