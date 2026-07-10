@@ -154,7 +154,6 @@ const HTTP_TEXT: {
     429: 'Too Many Requests',
 };
 
-// noinspection JSUnusedGlobalSymbols
 /**
  * HttpProtect
  * Provides middleware for express-like web server to protect from DDoS attacks.
@@ -258,8 +257,7 @@ export default class HttpProtect {
         return new Networks(ips.map(ip => `${ip}/32`));
     }
 
-    // noinspection JSUnusedGlobalSymbols
-    public async isBanned(ip: string): Promise<boolean> {
+        public async isBanned(ip: string): Promise<boolean> {
         const networks = await this.bannedNetworks();
 
         return networks.includes(ip);
