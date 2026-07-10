@@ -139,6 +139,48 @@ describe('HttpProtect: extended behavior', () => {
         });
     });
 
+    describe('getClientIp override', () => {
+        it('should default to the request-ip resolver', async () => {
+            const protector = new HttpProtect();
+
+            assert.equal(
+                protector.getClientIp(ipRequest('8.7.6.5')),
+                '8.7.6.5',
+            );
+            protector.destroy();
+        });
+
+        it('should use a custom resolver when provided', async () => {
+            const calls: any[] = [];
+            const protector = new HttpProtect({
+                getClientIp: req => {
+                    calls.push(req);
+
+                    // e.g. a trust-aware resolver reading a specific header
+                    return (req.headers?.['x-real-ip'] as string) || null;
+                },
+            });
+
+            const req = {
+                headers: {
+                    // spoofed forwarded header must be ignored by the override
+                    'x-forwarded-for': '1.1.1.1',
+                    'x-real-ip': '3.3.3.3',
+                },
+            } as any;
+
+            for (let i = 0; i < 1001; i++) {
+                await protector.verify(req);
+            }
+
+            // ban lands on the resolver-provided IP, not the spoofed header
+            assert.equal(await protector.isBanned('3.3.3.3'), true);
+            assert.equal(await protector.isBanned('1.1.1.1'), false);
+            assert.ok(calls.length > 0, 'custom resolver must be called');
+            protector.destroy();
+        });
+    });
+
     describe('isBanned()', () => {
         it('should reflect ban state of a specific ip', async () => {
             const protector = new HttpProtect();
