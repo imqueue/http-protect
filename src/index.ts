@@ -120,6 +120,22 @@ export interface HttpProtectOptions {
      * should not be limited or banned by this module.
      */
     safeNetworks?: string[];
+
+    /**
+     * Resolver used to extract the client IP address from an incoming
+     * request. By default request-ip's getClientIp() is used, which reads
+     * the usual proxy headers (x-forwarded-for, x-real-ip, etc.).
+     *
+     * Because bans and rate limits are keyed by this address, blindly
+     * trusting forwarded headers lets a client spoof its IP. Override this
+     * with a trust-aware resolver (for example one built on top of the
+     * `proxy-addr` package, configured with your known proxies) when the
+     * service is exposed behind proxies you do not fully control.
+     *
+     * @param {Request} req - incoming request
+     * @return {string | null} - resolved client IP, or null if unknown
+     */
+    getClientIp?: (req: Request) => string | null;
 }
 
 export interface Response {
@@ -169,6 +185,12 @@ export default class HttpProtect {
     public readonly blockListKey: string;
     public readonly safeNetworks: Networks;
 
+    /**
+     * Resolves the client IP for a request. Defaults to request-ip's
+     * getClientIp(), overridable via the getClientIp option.
+     */
+    public readonly getClientIp: (req: Request) => string | null;
+
     public constructor(private options?: HttpProtectOptions) {
         this.redis = options?.redis || this.connect(options?.redisOptions);
         this.prefix = this.options?.redisPrefix || 'imq:http-protect';
@@ -181,6 +203,7 @@ export default class HttpProtect {
             +(process.env.HTTP_PROTECT_BAN_LIMIT || 1000);
         this.blockListKey = `${this.prefix}:block-list`;
         this.safeNetworks = new Networks(this.options?.safeNetworks || []);
+        this.getClientIp = this.options?.getClientIp || getClientIp;
     }
 
     public connect(options?: RedisOptions): Redis {
@@ -195,7 +218,7 @@ export default class HttpProtect {
     }
 
     public async verify(req: Request): Promise<VerificationResponse> {
-        const ip = getClientIp(req) || '';
+        const ip = this.getClientIp(req) || '';
 
         if (this.isSafeIp(ip)) {
             return {
@@ -257,7 +280,7 @@ export default class HttpProtect {
         return new Networks(ips.map(ip => `${ip}/32`));
     }
 
-        public async isBanned(ip: string): Promise<boolean> {
+    public async isBanned(ip: string): Promise<boolean> {
         const networks = await this.bannedNetworks();
 
         return networks.includes(ip);

@@ -42,7 +42,7 @@ export class RedisClientMock extends EventEmitter {
     private static __scripts: any = {};
     private static __expirations: any = {};
     private __name: string = '';
-        public connected: boolean = true;
+    public connected: boolean = true;
     public status = 'ready';
 
     constructor(options: any = {}) {
@@ -57,8 +57,8 @@ export class RedisClientMock extends EventEmitter {
         }
     }
 
-        public end() {}
-        public quit() {}
+    public end() {}
+    public quit() {}
 
     // noinspection JSMethodCanBeStatic
     public set(...args: any[]): number {
@@ -68,7 +68,7 @@ export class RedisClientMock extends EventEmitter {
         return 1;
     }
 
-        public setnx(...args: any[]): number {
+    public setnx(...args: any[]): number {
         const self = RedisClientMock;
         const key = args.shift();
         let result = 0;
@@ -84,7 +84,7 @@ export class RedisClientMock extends EventEmitter {
         return result;
     }
 
-        public get(...args: any[]): string | null {
+    public get(...args: any[]): string | null {
         const self = RedisClientMock;
         const key = args.shift();
         const cb = args.length > 0 ? args.pop() : undefined;
@@ -116,7 +116,7 @@ export class RedisClientMock extends EventEmitter {
         return result;
     }
 
-        public sadd(...args: any[]): number {
+    public sadd(...args: any[]): number {
         const self = RedisClientMock;
         const key = args.shift();
         let addedCount = 0;
@@ -144,7 +144,7 @@ export class RedisClientMock extends EventEmitter {
         return addedCount;
     }
 
-        public sismember(...args: any[]): number {
+    public sismember(...args: any[]): number {
         const self = RedisClientMock;
         const key = args.shift();
         const member = args.shift();
@@ -155,7 +155,7 @@ export class RedisClientMock extends EventEmitter {
         return result;
     }
 
-        public expire(...args: any[]): number {
+    public expire(...args: any[]): number {
         const self = RedisClientMock;
         const key = args.shift();
         const seconds = args.shift();
@@ -252,7 +252,7 @@ export class RedisClientMock extends EventEmitter {
         }
     }
 
-        public lrange(
+    public lrange(
         key: string,
         start: number,
         stop: number,
@@ -265,7 +265,7 @@ export class RedisClientMock extends EventEmitter {
         return result;
     }
 
-        public scan(...args: any[]): (string | string[])[] {
+    public scan(...args: any[]): (string | string[])[] {
         const cb = args.pop();
         const qs = RedisClientMock.__queues__;
         const found: string[] = [];
@@ -307,7 +307,7 @@ export class RedisClientMock extends EventEmitter {
         return [0];
     }
 
-        public client(...args: any[]): string | boolean {
+    public client(...args: any[]): string | boolean {
         const self = RedisClientMock;
         const cmd = args.shift();
         const cb = args.pop();
@@ -329,7 +329,7 @@ export class RedisClientMock extends EventEmitter {
         return true;
     }
 
-        public psubscribe(...args: any[]): number {
+    public psubscribe(...args: any[]): number {
         this.cbExecute(args.pop(), null, 1);
         return 1;
     }
@@ -339,12 +339,12 @@ export class RedisClientMock extends EventEmitter {
         return 1;
     }
 
-        public evalsha(...args: any[]): boolean {
+    public evalsha(...args: any[]): boolean {
         this.cbExecute(args.pop());
         return true;
     }
 
-        public del(...args: any[]): number {
+    public del(...args: any[]): number {
         const self = RedisClientMock;
         let count = 0;
         for (let key of args) {
@@ -368,7 +368,7 @@ export class RedisClientMock extends EventEmitter {
         return count;
     }
 
-        public zadd(...args: any[]): boolean {
+    public zadd(...args: any[]): boolean {
         const [key, score, value, cb] = args;
         const timeout = score - Date.now();
         setTimeout(() => {
@@ -398,7 +398,7 @@ export class RedisClientMock extends EventEmitter {
         return newValue;
     }
 
-        public smembers(...args: any[]): string[] {
+    public smembers(...args: any[]): string[] {
         const self = RedisClientMock;
         const key = args.shift();
         const cb =
@@ -411,7 +411,7 @@ export class RedisClientMock extends EventEmitter {
         return result as string[];
     }
 
-        public disconnect(): boolean {
+    public disconnect(): boolean {
         delete RedisClientMock.__clientList[this.__name];
         if (this.__rt) {
             clearTimeout(this.__rt);
@@ -420,7 +420,7 @@ export class RedisClientMock extends EventEmitter {
         return true;
     }
 
-        public config(): boolean {
+    public config(): boolean {
         return true;
     }
 

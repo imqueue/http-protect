@@ -33,11 +33,10 @@ Or it is possible to do manual injection:
 
 ```typescript
 import HttpProtect, { VerificationStatus } from '@imqueue/http-protect';
-import { getClientIp } from 'request-ip';
 
 // inside some async function in the code
 const protect = new HttpProtect();
-const { status, httpCode } = await protect.verify(getClientIp(req));
+const { status, httpCode } = await protect.verify(req);
 
 switch (status) {
     case VerificationStatus.LIMITED: {
@@ -79,6 +78,27 @@ networks. It also based on ioredis module to connect to redis server, so
 you might want to configure it via constructor options or bypass existing
 ioredis instance in the options. Please, refer `HttpProtectOptions` interface
 for more details.
+
+### Client IP resolution
+
+By default the client IP is resolved with [request-ip](
+https://www.npmjs.com/package/request-ip), which reads the usual proxy
+headers (`x-forwarded-for`, `x-real-ip`, etc.). Because bans and rate limits
+are keyed by this address, a client behind an untrusted proxy could spoof
+those headers to evade limits or poison the ban list. When the service is
+exposed behind proxies you do not fully control, override the resolver with
+a trust-aware one (for example built on top of [proxy-addr](
+https://www.npmjs.com/package/proxy-addr) configured with your known
+proxies):
+
+```typescript
+import proxyaddr from 'proxy-addr';
+
+const protect = new HttpProtect({
+    // trust only your known load balancer subnet
+    getClientIp: req => proxyaddr(req, ip => ip === '10.0.0.1'),
+});
+```
 
 ## License
 
