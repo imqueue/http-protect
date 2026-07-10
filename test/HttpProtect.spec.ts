@@ -94,3 +94,144 @@ describe('HttpProtect', () => {
         });
     });
 });
+
+describe('HttpProtect: extended behavior', () => {
+    function fakeResponse() {
+        const state = {
+            statusCode: 0,
+            headers: {} as Record<string, string>,
+            body: '',
+            ended: false,
+        };
+
+        return {
+            state,
+            status(code: number) {
+                state.statusCode = code;
+            },
+            setHeader(name: string, value: string) {
+                state.headers[name.toLowerCase()] = value;
+            },
+            send(body: string) {
+                state.body = body;
+            },
+            end() {
+                state.ended = true;
+            },
+        };
+    }
+
+    describe('safeNetworks', () => {
+        it('should never limit or ban safe networks', async () => {
+            const protector = new HttpProtect({
+                safeNetworks: ['10.0.0.0/8'],
+            });
+            const req = ipRequest('10.1.2.3');
+
+            for (let i = 0; i < 2000; i++) {
+                const result = await protector.verify(req);
+
+                assert.equal(result.status, VerificationStatus.SAFE);
+            }
+
+            assert.equal(await protector.isBanned('10.1.2.3'), false);
+            protector.destroy();
+        });
+    });
+
+    describe('isBanned()', () => {
+        it('should reflect ban state of a specific ip', async () => {
+            const protector = new HttpProtect();
+            const req = ipRequest('4.4.4.4');
+
+            for (let i = 0; i < 1001; i++) {
+                await protector.verify(req);
+            }
+
+            assert.equal(await protector.isBanned('4.4.4.4'), true);
+            assert.equal(await protector.isBanned('5.5.5.5'), false);
+            protector.destroy();
+        });
+    });
+
+    describe('middleware()', () => {
+        it('should call next() for a safe request', async () => {
+            const protector = new HttpProtect();
+            const res = fakeResponse();
+            let nextCalled = false;
+
+            await protector.middleware()(
+                ipRequest('6.6.6.6'),
+                res as any,
+                () => {
+                    nextCalled = true;
+                },
+            );
+
+            assert.equal(nextCalled, true);
+            assert.equal(res.state.ended, false);
+            protector.destroy();
+        });
+
+        it('should end a banned request with 418', async () => {
+            const protector = new HttpProtect();
+            const req = ipRequest('7.7.7.7');
+
+            for (let i = 0; i < 1001; i++) {
+                await protector.verify(req);
+            }
+
+            const res = fakeResponse();
+            let nextCalled = false;
+
+            await protector.middleware()(req, res as any, () => {
+                nextCalled = true;
+            });
+
+            assert.equal(nextCalled, false);
+            assert.equal(res.state.statusCode, 418);
+            assert.equal(res.state.ended, true);
+            protector.destroy();
+        });
+    });
+
+    describe('jsonMiddleware()', () => {
+        it('should respond with a json error for limited requests', async () => {
+            const protector = new HttpProtect();
+            const req = ipRequest('8.8.4.4');
+
+            for (let i = 0; i < 300; i++) {
+                await protector.verify(req);
+            }
+
+            const res = fakeResponse();
+
+            await protector.jsonMiddleware()(req, res as any, () => undefined);
+
+            assert.equal(res.state.statusCode, 429);
+            assert.equal(res.state.headers['content-type'], 'application/json');
+            assert.equal(JSON.parse(res.state.body).error.code, 429);
+            protector.destroy();
+        });
+    });
+
+    describe('textMiddleware()', () => {
+        it('should respond with a plain-text error for banned requests', async () => {
+            const protector = new HttpProtect();
+            const req = ipRequest('9.9.9.9');
+
+            for (let i = 0; i < 1001; i++) {
+                await protector.verify(req);
+            }
+
+            const res = fakeResponse();
+
+            await protector.textMiddleware()(req, res as any, () => undefined);
+
+            assert.equal(res.state.statusCode, 418);
+            assert.equal(res.state.headers['content-type'], 'text/plain');
+            assert.ok(res.state.body.startsWith('418'));
+            protector.destroy();
+        });
+    });
+});
