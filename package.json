@@ -35,7 +35,7 @@
   "bugs": {
     "url": "https://github.com/imqueue/http-protect/issues"
   },
-  "homepage": "https://github.com/imqueue/http-protect",
+  "homepage": "https://imqueue.org/",
   "dependencies": {
     "@imqueue/net": "^3.0.0",
     "ioredis": "^5.11.1",
