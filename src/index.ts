@@ -247,7 +247,7 @@ export interface HttpProtectOptions {
  * `http.ServerResponse` wrapper or a test double all satisfy it without this
  * package depending on any of them.
  *
- * `Response.header()` and `Response.setHeader()` are both optional
+ * {@link Response.header} and {@link Response.setHeader} are both optional
  * because frameworks disagree on which they provide;
  * {@link HttpProtect.textMiddleware} and {@link HttpProtect.jsonMiddleware} prefer
  * `header`, fall back to `setHeader`, and simply send no `Content-Type` if neither
@@ -273,7 +273,7 @@ export interface Response {
     header?(name: string, value: string): any;
 
     /**
-     * Node-style header setter, used only when `Response.header()` is absent.
+     * Node-style header setter, used only when {@link Response.header} is absent.
      *
      * @param name - the header name
      * @param value - the header value
@@ -294,7 +294,7 @@ export interface Response {
 
     /**
      * Ends the response. Called by every middleware on a rejected request,
-     * including after `Response.send()`.
+     * including after {@link Response.send}.
      *
      * @param args - passed straight through from the middleware
      * @returns Ignored by the middlewares.
@@ -704,7 +704,7 @@ export default class HttpProtect {
      *
      * @remarks
      * The leanest of the three: a rejected request gets its status and
-     * `Response.end()`, with no `Content-Type` and nothing written. Prefer
+     * {@link Response.end}, with no `Content-Type` and nothing written. Prefer
      * {@link HttpProtect.jsonMiddleware} for an API whose clients parse errors, or
      * {@link HttpProtect.textMiddleware} for something a human might read.
      *
@@ -741,7 +741,7 @@ export default class HttpProtect {
      * @remarks
      * Sends the code and its reason phrase — `429 Too Many Requests`, or
      * `418 I'm a teapot` for a ban. Sets `Content-Type` through
-     * `Response.header()` if the framework has it, `Response.setHeader()`
+     * {@link Response.header} if the framework has it, {@link Response.setHeader}
      * otherwise, and omits it if neither exists.
      */
     public textMiddleware(): (
