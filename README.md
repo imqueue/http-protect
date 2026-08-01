@@ -58,19 +58,23 @@ switch (status) {
 This module aldo provides simple API to check if given IP is blacklisted or not,
 or get the list of banned network addresses:
 
+All three are `async`, so they must be awaited — without `await`,
+`bannedNetworks()` throws (`.toJSON` is not a function on a `Promise`) and the
+other two log a pending `Promise` rather than a boolean:
+
 ```typescript
 import HttpProtect from '@imqueue/http-protect';
 
 const protect = new HttpProtect();
 
 // get the list of banned networks
-console.log(protect.bannedNetworks().toJSON());
+console.log((await protect.bannedNetworks()).toJSON());
 
 // check if given IP is currently banned or not
-console.log(protect.isBanned('127.0.0.1'));
+console.log(await protect.isBanned('127.0.0.1'));
 
 // check if given IP is currently limited or not
-console.log(protect.isLimited('127.0.0.1'));
+console.log(await protect.isLimited('127.0.0.1'));
 ```
 
 This module uses redis server to deal with requests counters and banned 
@@ -78,6 +82,37 @@ networks. It also based on ioredis module to connect to redis server, so
 you might want to configure it via constructor options or bypass existing
 ioredis instance in the options. Please, refer `HttpProtectOptions` interface
 for more details.
+
+### Before you deploy it
+
+Three properties of the defaults are worth deciding about deliberately.
+
+**A ban does not expire.** Banned addresses go into a redis set that is never
+given a TTL, and nothing in this module removes a member from it. Once an
+address passes `banLimit` it is answered 418 until something outside this
+module deletes it from `<redisPrefix>:block-list`. Plan for how you will lift
+one — an admin endpoint, a cron, or a manual `SREM` — before you rely on the
+ban threshold.
+
+**`maxRequests` counts a continuous stream, not a fixed window.** The per-IP
+counter's TTL is pushed back to `ttl` on *every* request from that address, so
+the count is discarded only after a full `ttl` of silence. With the defaults,
+200 requests in 10 seconds trips the limit — and so does one request per second
+for 200 seconds, which is ordinary behaviour for a real user. If your sessions
+are long-lived and chatty, raise `maxRequests` and `banLimit` accordingly, or
+you will ban real users.
+
+**Anything unidentifiable is refused.** If the resolver cannot produce an
+address, that request is answered 429 without being counted, rather than served
+unchecked. It is deliberately not pooled under a shared key, because one such
+client could then exhaust that counter and get every other unidentifiable
+client permanently banned.
+
+`bannedNetworks()` and `isBanned()` widen every banned address to a `/32`,
+which is right for IPv4 and wrong for IPv6 — a `/32` IPv6 prefix spans 2^96
+addresses, so those two methods over-report for IPv6 clients. Actual blocking
+is unaffected: `verify()` matches exact addresses in redis and does not use
+them.
 
 ### Client IP resolution
 
