@@ -276,4 +276,77 @@ describe('HttpProtect: extended behavior', () => {
             protector.destroy();
         });
     });
+
+    // A resolver returns null when it cannot determine an address, and a custom
+    // one may return anything at all. Both used to reach Networks.includes() as
+    // the empty string and throw TypeError out of verify() — which, inside a
+    // middleware, is a rejected promise rather than a response.
+    describe('an unidentifiable client', () => {
+        const unresolvable = (value: string | null) =>
+            new HttpProtect({ getClientIp: () => value });
+
+        for (const [label, value] of [
+            ['null', null],
+            ['an empty string', ''],
+            ['a non-address string', 'unknown'],
+            ['a CIDR record rather than an address', '10.0.0.1/32'],
+        ] as [string, string | null][]) {
+            it(`should refuse, not throw, when the resolver returns ${label}`, async () => {
+                const protector = unresolvable(value);
+
+                const result = await protector.verify(ipRequest('1.2.3.4'));
+
+                assert.notEqual(
+                    result.status,
+                    VerificationStatus.SAFE,
+                    'an unidentifiable client must not be served',
+                );
+                assert.equal(result.httpCode, 429);
+                protector.destroy();
+            });
+        }
+
+        it('should keep an unidentifiable client out of redis entirely', async () => {
+            const protector = unresolvable(null);
+            // The mock redis is shared across this file, so compare against the
+            // block list as it stands rather than against an empty one.
+            const before = (await protector.bannedNetworks()).toJSON();
+
+            for (let i = 0; i < 2001; i++) {
+                await protector.verify(ipRequest('1.2.3.4'));
+            }
+
+            // Well past banLimit, yet nothing was counted, so nothing was
+            // banned: one unidentifiable client must not be able to exhaust a
+            // shared counter, nor add an unparseable member to the block list —
+            // which would make this very call throw for every caller.
+            const after = await protector.bannedNetworks();
+
+            assert.deepEqual(after.toJSON(), before);
+            protector.destroy();
+        });
+
+        it('should let the middlewares answer rather than reject', async () => {
+            const protector = unresolvable(null);
+            const res = fakeResponse();
+            let nextCalled = false;
+
+            await protector.jsonMiddleware()(
+                ipRequest('1.2.3.4'),
+                res as any,
+                () => {
+                    nextCalled = true;
+                },
+            );
+
+            assert.equal(
+                nextCalled,
+                false,
+                'must not pass the request through',
+            );
+            assert.equal(res.state.statusCode, 429);
+            assert.equal(res.state.ended, true);
+            protector.destroy();
+        });
+    });
 });
